@@ -29,31 +29,42 @@ document.addEventListener("DOMContentLoaded", () => {
         speak(`${greeting} Hello Arun.`);
     };
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    recognition.continuous = true;
-    recognition.interimResults = false;
+    let recognition = null;
 
-    recognition.onstart = () => {
-        content.textContent = "Listening...";
-        console.log("Speech recognition started");
+    const setupSpeechRecognition = () => {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = false;
+
+        recognition.onstart = () => {
+            content.textContent = "Listening...";
+            console.log("Speech recognition started");
+        };
+
+        recognition.onresult = (event) => {
+            const transcript = event.results[event.resultIndex][0].transcript.toLowerCase();
+            content.textContent = transcript;
+            processCommand(transcript);
+        };
+
+        recognition.onerror = (event) => {
+            console.error("Speech recognition error:", event.error);
+            speak("Sorry, I didn't catch that. Can you please repeat?");
+            restartRecognition();
+        };
+
+        recognition.onend = () => {
+            console.log("Speech recognition ended, restarting...");
+            restartRecognition();
+        };
     };
 
-    recognition.onresult = (event) => {
-        const transcript = event.results[event.resultIndex][0].transcript.toLowerCase();
-        content.textContent = transcript;
-        processCommand(transcript);
-    };
-
-    recognition.onerror = (event) => {
-        console.error("Speech recognition error:", event.error);
-        speak("Sorry, I didn't catch that. Can you please repeat?");
-        recognition.start(); // Restart listening on error
-    };
-
-    recognition.onend = () => {
-        console.log("Speech recognition ended, restarting...");
-        recognition.start(); // Restart listening when recognition ends
+    const restartRecognition = () => {
+        if (recognition) {
+            recognition.stop();
+            recognition.start();
+        }
     };
 
     const processCommand = (message) => {
@@ -192,16 +203,14 @@ document.addEventListener("DOMContentLoaded", () => {
         speak(response);
     };
 
-    // Start JARVIS manually on button click
+    // Initialize JARVIS
     startButton.addEventListener('click', () => {
-        recognition.start();
-        speak("Starting JARVIS...");
-        wishMe();
-    });
-
-    // Initialize JARVIS automatically
-    speak("Initializing JARVIS...", () => {
-        wishMe();
-        recognition.start();
+        if (!recognition) {
+            setupSpeechRecognition();
+        }
+        speak("Initializing JARVIS...", () => {
+            wishMe();
+            recognition.start();
+        });
     });
 });
